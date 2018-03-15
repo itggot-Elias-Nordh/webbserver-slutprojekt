@@ -13,3 +13,11 @@ function friendsOpen() {
     document.querySelector(".add").classList.toggle("none");
     document.querySelector(".chat").classList.toggle("none");
  }
+
+ function getShit(){
+    $.get('/test', function(data){
+        console.log(data)
+    })
+ }
+
+ setInterval(getShit, 1000)

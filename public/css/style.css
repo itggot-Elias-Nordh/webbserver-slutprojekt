@@ -144,13 +144,22 @@ a {
     justify-content: center;
 }
 
-.none {
-    display: none;
-}
-
 .send {
     display: flex;
     flex-direction: row;
+    width: 50vw;
+}
 
+.chat-input {
+    width: 100%;
+}
+
+.window {
+    width: 60vw;
+    height: 500px;
+    background-color: white;
+    border: 1px solid black; 
+    margin: 20px;
+    margin-top: 100px;
 }
   
