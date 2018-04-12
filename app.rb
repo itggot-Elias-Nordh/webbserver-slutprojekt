@@ -1,5 +1,5 @@
 class App < Sinatra::Base
-	
+
 	enable:sessions
 
 	get('/error') do
@@ -72,9 +72,8 @@ class App < Sinatra::Base
 	end
 
 	get('/website') do
-		username = session[:username]
+		user1 = session[:username]
 		if session[:user] == true
-			user1 = session[:username]
 			db = SQLite3::Database.new("./db/copybook.sqlite")
 			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
 			db.execute("SELECT * FROM friends WHERE user1 IS (?)", [user1])
@@ -118,24 +117,34 @@ class App < Sinatra::Base
 	end
 
 	post('/message') do
-		redirect('/website')
+		p user1 = session[:username]
+		p user2 = params[:friend]
+		message = params[:message]
+		if message == ""
+			redirect('/chat')
+		end
+		db = SQLite3::Database.new("./db/copybook.sqlite")
+		db.execute("INSERT INTO messages (message, user1, user2) VALUES (?,?,?)", [message, user1, user2])
+		redirect('/chat')
 	end
 
 	get('/chat') do
-		username = session[:username]
+		user1 = session[:username]
 		if session[:user] == true
-			user1 = session[:username]
+			user2 = params[:friend]
 			db = SQLite3::Database.new("./db/copybook.sqlite")
 			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
+			p user1_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user1, user2])
+			p user2_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user2, user1])
 			db.execute("SELECT * FROM friends WHERE user1 IS (?)", [user1])
 			a = []
 			a << friends
-			erb(:chat, locals:{a: friends})
+			erb(:chat, locals:{a: friends, name: user2, user1_messages: user1_messages, user2_messages: user2_messages})
 		else
 			session[:error] = "Not logged in"
 			session[:back] = "/login"
 			redirect('/error')
 		end
-	end
+	end        
 
 end           

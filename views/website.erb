@@ -8,7 +8,7 @@
             <% a.each do |friend| %>
                 <form class="send" action="/chat" method="GET" autocomplete="off">
                     <input type="hidden" value="<%=friend[0]%>" name="friend">
-                    <input type="submit" value="<%=friend[0]%>">
+                    <input class="friend" type="submit" value="<%=friend[0]%>">
                 </form>
             <% end %>
         </div>

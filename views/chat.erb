@@ -6,8 +6,8 @@
         <div class="list">
             <% a.each do |friend| %>
                 <form class="send" action="/chat" method="GET" autocomplete="off">
-                    <input type="hidden" value="<%=friend[0][0]%>" name="friend">
-                    <input type="submit" value="<%=friend[0][0]%>">
+                    <input type="hidden" value="<%=friend[0]%>" name="friend">
+                    <input class="friend" type="submit" value="<%=friend[0]%>">
                 </form>
             <% end %>
         </div>
@@ -17,10 +17,16 @@
 
         </div>
         <div class="window">
-
+            <% user1_messages.each do |message| %>
+                <p class="message_box my_message"><%=message[0]%></p>
+            <% end %>
+            <% user2_messages.each do |message| %>
+                <p class="message_box my_message"><%=message[0]%></p>
+            <% end %>
         </div>
         <form class="send" action="/message" method="POST" autocomplete="off">
             <input class="chat-input" type="text" name="message" placeholder="Type here">
+            <input type="hidden" value="<%=name%>" name="friend">
             <input type="submit" value="Send">
         </form>
     </div>
