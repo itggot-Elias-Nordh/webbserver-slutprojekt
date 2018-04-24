@@ -10,18 +10,119 @@
                     <input class="friend" type="submit" value="<%=friend[0]%>">
                 </form>
             <% end %>
+            <form class="send" action="/website" method="GET" autocomplete="off">
+                <input class="friend margin" type="submit" value="Add Friend">
+            </form>
         </div>
     </div>
     <div class="chat">
         <div class="header">
-
+            <h1 class="name"><%= name %></h1>
         </div>
-        <div class="window">
-            <% user1_messages.each do |message| %>
-                <p class="message_box my_message"><%=message[0]%></p>
+        <div class="window" id="window">
+            <% a = [] %>
+            <% org1 = [] %>
+            <% org2 = [] %>
+            <% temp1.each do |temp| %>
+                <% org1 << temp %>
             <% end %>
-            <% user2_messages.each do |message| %>
-                <p class="message_box my_message"><%=message[0]%></p>
+            <% temp2.each do |temp| %>
+                <% org2 << temp %>
+            <% end %>
+            <% length = (user1_messages.length) + (user2_messages.length) %>
+            <% if user1_messages == [] and user2_messages == [] %>
+            <% elsif user1_messages == [] %>
+                <% i = 0 %>
+                <% while i < user2_messages.length %>
+                    <p class="left dont-break-out"><%= user2_messages[i][1] %></p> 
+                    <% i += 1 %>
+                <% end %>
+            <% elsif user2_messages == [] %>
+                <% i = 0 %>
+                <% while i < user1_messages.length %>
+                    <p class="right dont-break-out"><%= user1_messages[i][1] %></p> 
+                    <% i += 1 %>
+                <% end %>
+            <% else %>
+                <% begin %>
+                    <% while a.length < length %>
+                        <% i1 = 0 %>
+                        <% i2 = 0 %>
+                        <% if user1_messages[0][0] < user2_messages[0][0] or user2_messages == [] %>
+                            <% smallest = user1_messages[0][0] %>
+                        <% else %>
+                            <% smallest = user2_messages[0][0] %>
+                        <% end %>
+                        <% small1 = user1_messages[0][0] %>
+                        <% small1_id = 0 %>
+                        <% small2 = user2_messages[0][0] %>
+                        <% small2_id = 0 %>
+                        <% while i1 < user1_messages.length %>
+                            <% if user1_messages[i1][0] < small1 %>
+                                <% small1 = user1_messages[i1][0] %>
+                                <% small1_id = i1 %>
+                            <% end %>
+                            <% i1 += 1 %> 
+                        <% end %>
+                        <% while i2 < user2_messages.length %>
+                            <% if user2_messages[i2][0] < small2 %>
+                                <% small2 = user2_messages[i2][0] %>
+                                <% small2_id = i2 %>
+                            <% end %>
+                            <% i2 += 1 %> 
+                        <% end %>
+                        <% if small1 < small2 %>
+                            <% small = user1_messages.delete_at(small1_id) %> 
+                        <% else %>
+                            <% small = user2_messages.delete_at(small2_id) %>
+                        <% end %>
+                        <% if small[0] < smallest %>
+                            <% smallest = small %>
+                        <% end %>
+                        <% a << smallest %>
+                    <% end %>
+                    <% a.each do |message_id| %>
+                        <% org1.each do |message| %>
+                            <% if message_id == message[0] %>
+                                <p class="right dont-break-out"><%= message[1] %></p>
+                            <% end %>
+                        <% end %>
+                        <% org2.each do |message| %>
+                            <% if message_id == message[0] %>
+                                <p class="left dont-break-out"><%= message[1] %></p>
+                            <% end %>
+                        <% end %>
+                    <% end %>
+                <% rescue %>
+                    <% a.each do |message_id| %>
+                        <% org1.each do |message| %>
+                            <% if message_id == message[0] %>
+                                <p class="right dont-break-out"><%= message[1] %></p>
+                            <% end %>
+                        <% end %>
+                        <% org2.each do |message| %>
+                            <% if message_id == message[0] %>
+                                <p class="left dont-break-out"><%= message[1] %></p>
+                            <% end %>
+                        <% end %>
+                    <% end %>
+                    <% if user1_messages == [] and user2_messages == [] %>
+                    <% elsif user1_messages == [] %>
+                        <% i = 0 %>
+                        <% while i < user2_messages.length %>
+                            <p class="left dont-break-out"><%= user2_messages[i][1] %></p> 
+                            <% i += 1 %>
+                        <% end %>
+                    <% elsif user2_messages == [] %>
+                        <% i = 0 %>
+                        <% while i < user1_messages.length %>
+                            <p class="right dont-break-out"><%= user1_messages[i][1] %></p> 
+                            <% i += 1 %>
+                        <% end %>
+                    <% else %>
+                        <% p "Error" %>
+                    <% end %>
+                <% end %>
             <% end %>
         </div>
         <form class="send" action="/message" method="POST" autocomplete="off">
@@ -31,3 +132,4 @@
         </form>
     </div>
 </div>
+

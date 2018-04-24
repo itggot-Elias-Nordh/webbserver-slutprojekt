@@ -14,6 +14,10 @@ function friendsOpen() {
     document.querySelector(".chat").classList.toggle("none");
  }
 
+ $(document).ready(function(){
+    $('#window').scrollTop($('#window')[0].scrollHeight - $('#window')[0].clientHeight);
+});
+
  function getShit(){
     $.get('/test', function(data){
         console.log(data)

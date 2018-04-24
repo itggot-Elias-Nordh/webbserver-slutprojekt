@@ -119,6 +119,7 @@ class App < Sinatra::Base
 	post('/message') do
 		p user1 = session[:username]
 		p user2 = params[:friend]
+		session[:user2] = user2
 		message = params[:message]
 		if message == ""
 			redirect('/chat')
@@ -129,17 +130,53 @@ class App < Sinatra::Base
 	end
 
 	get('/chat') do
+		user2 = ""
 		user1 = session[:username]
+		user2 = session[:user2]
 		if session[:user] == true
-			user2 = params[:friend]
+			if user2 == "" or user2 == nil
+				user2 = params[:friend]
+			end
 			db = SQLite3::Database.new("./db/copybook.sqlite")
 			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
-			p user1_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user1, user2])
-			p user2_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user2, user1])
+			user1_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user1, user2])
+			user2_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user2, user1])
+			i1 = 0
+			user1_messages.each do |message|
+				chars = message[1].to_s.chars
+				i2 = 0
+				chars.each do |char|
+					if char == "<"
+						chars[i2] = "&lt;"
+					elsif char == ">"
+						chars[i2] = "&gt;"
+					end
+					i2 += 1
+				end
+				user1_messages[i1][1] = chars.join
+				i1 += 1
+			end
+			p user1_messages
+			i1 = 0
+			user2_messages.each do |message|
+				chars = message[1].to_s.chars
+				i2 = 0
+				chars.each do |char|
+					if char == "<"
+						chars[i2] = "&lt;"
+					elsif char == ">"
+						chars[i2] = "&gt;"
+					end
+					i2 += 1
+				end
+				user2_messages[i1][1] = chars.join
+				i1 += 1
+			end
 			db.execute("SELECT * FROM friends WHERE user1 IS (?)", [user1])
+			session[:user2] = ""
 			a = []
 			a << friends
-			erb(:chat, locals:{a: friends, name: user2, user1_messages: user1_messages, user2_messages: user2_messages})
+			erb(:chat, locals:{a: friends, name: user2, temp1: user1_messages, temp2: user2_messages, user1_messages: user1_messages, user2_messages: user2_messages })
 		else
 			session[:error] = "Not logged in"
 			session[:back] = "/login"
