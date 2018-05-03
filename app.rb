@@ -1,5 +1,7 @@
-class App < Sinatra::Base
+require_relative 'modules.rb'
 
+class App < Sinatra::Base
+	include Messages
 	enable:sessions
 
 	get('/error') do
@@ -73,11 +75,12 @@ class App < Sinatra::Base
 
 	get('/website') do
 		user1 = session[:username]
+		session[:user2] = ""
 		if session[:user] == true
 			db = SQLite3::Database.new("./db/copybook.sqlite")
 			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
-			db.execute("SELECT * FROM friends WHERE user1 IS (?)", [user1])
-			erb(:website, locals:{a: friends})
+			groups = db.execute("SELECT group_name FROM groups WHERE user_name IS (?)", [user1])
+			erb(:website, locals:{a: friends, groups: groups})
 		else
 			session[:error] = "Wrong username or password"
 			session[:back] = "/login"
@@ -117,8 +120,8 @@ class App < Sinatra::Base
 	end
 
 	post('/message') do
-		p user1 = session[:username]
-		p user2 = params[:friend]
+		user1 = session[:username]
+		user2 = params[:friend]
 		session[:user2] = user2
 		message = params[:message]
 		if message == ""
@@ -129,59 +132,113 @@ class App < Sinatra::Base
 		redirect('/chat')
 	end
 
-	get('/chat') do
-		user2 = ""
+	post('/group_message') do
 		user1 = session[:username]
-		user2 = session[:user2]
+		group = params[:group]
+		session[:user2] = group
+		session[:group] = group
+		message = params[:message]
+		if message == ""
+			redirect('/group_chat')
+		end
+		db = SQLite3::Database.new("./db/copybook.sqlite")
+		db.execute("INSERT INTO messages (message, user1, user2) VALUES (?,?,?)", [message, user1, group])
+		redirect('/group_chat')
+	end
+
+	get('/chat') do
+		user1 = session[:username]
+		user2 = params[:friend]
 		if session[:user] == true
 			if user2 == "" or user2 == nil
-				user2 = params[:friend]
+				user2 = session[:user2]
 			end
 			db = SQLite3::Database.new("./db/copybook.sqlite")
 			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
-			user1_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user1, user2])
-			user2_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user2, user1])
-			i1 = 0
-			user1_messages.each do |message|
-				chars = message[1].to_s.chars
-				i2 = 0
-				chars.each do |char|
-					if char == "<"
-						chars[i2] = "&lt;"
-					elsif char == ">"
-						chars[i2] = "&gt;"
-					end
-					i2 += 1
-				end
-				user1_messages[i1][1] = chars.join
-				i1 += 1
-			end
-			p user1_messages
-			i1 = 0
-			user2_messages.each do |message|
-				chars = message[1].to_s.chars
-				i2 = 0
-				chars.each do |char|
-					if char == "<"
-						chars[i2] = "&lt;"
-					elsif char == ">"
-						chars[i2] = "&gt;"
-					end
-					i2 += 1
-				end
-				user2_messages[i1][1] = chars.join
-				i1 += 1
-			end
-			db.execute("SELECT * FROM friends WHERE user1 IS (?)", [user1])
-			session[:user2] = ""
-			a = []
-			a << friends
-			erb(:chat, locals:{a: friends, name: user2, temp1: user1_messages, temp2: user2_messages, user1_messages: user1_messages, user2_messages: user2_messages })
+			session[:user2] = user2
+			erb(:chat, locals:{a: friends, name: user2})
 		else
 			session[:error] = "Not logged in"
 			session[:back] = "/login"
 			redirect('/error')
 		end
-	end        
+	end  
+
+	get('/group_chat') do
+		user1 = session[:username]
+		session[:user2] = ""
+		group = params[:group]
+		if session[:user] == true
+			if group == "" or group == nil
+				group = session[:group]
+			end
+			db = SQLite3::Database.new("./db/copybook.sqlite")
+			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
+			session[:group] = group
+			p group
+			erb(:group_chat, locals:{a: friends, name: group})
+		else
+			session[:error] = "Not logged in"
+			session[:back] = "/login"
+			redirect('/error')
+		end
+	end 
+	
+	get('/messages') do
+		user1 = session[:username]
+		user2 = session[:user2]
+		yes = false
+		if user2 == "" or user2 == nil
+			user2 = session[:group]
+			yes = true
+		end
+		db = SQLite3::Database.new("./db/copybook.sqlite")
+		user1_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user1, user2])
+		if yes == true
+			user2_messages = db.execute("SELECT * FROM messages WHERE user2=? AND user1!=?", [user2, user1])
+		else
+			user2_messages = db.execute("SELECT * FROM messages WHERE user1=? AND user2=?", [user2, user1])
+		end
+		result = Messages::escape_messages(user1_messages, user2_messages)
+		user1_messages = result[0]
+		user2_messages = result[1]
+		erb(:messages, layout:false, locals:{name: user2, temp1: user1_messages, temp2: user2_messages, user1_messages: user1_messages, user2_messages: user2_messages })
+	end 
+
+	post('/create_group') do
+		user = session[:username]
+		group = params[:name] + " (group)"
+		db = SQLite3::Database.new("./db/copybook.sqlite")
+		begin
+			if group == db.execute("SELECT * FROM groups WHERE group_name IS (?)", [group])[0][0]
+				session[:error] = "Group already exist"
+				session[:back] = "/website"
+				redirect('/error')
+			else
+				db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, user])
+			end
+		rescue
+			db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, user])
+		end
+		redirect('/website')
+	end
+
+	post('/add_to_group') do
+		friend = params[:friend]
+		group = session[:group]
+		db = SQLite3::Database.new("./db/copybook.sqlite")
+		begin
+			if friend != db.execute("SELECT user_name FROM groups WHERE group_name=? AND user_name=?", [group, friend])[0][0]
+				db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, friend])
+			else
+				session[:error] = "User already in the group"
+				session[:back] = "/group_chat"
+				redirect('/error')
+			end
+		rescue
+			db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, friend])
+		end
+		redirect('/group_chat')
+	end       
 
 end           

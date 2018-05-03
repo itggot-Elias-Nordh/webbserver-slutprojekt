@@ -1,14 +1,20 @@
 <div class="container">
-    <a class="open" href="javaScript:void(0);" onclick="friendsOpen()">Friends</a>
+    <a class="open" href="javaScript:void(0);" onclick="friendsOpen()">Add friend to group</a>
     <a class="logout" href="/">Logout</a> 
     <div class="friends">
         <a href="javaScript:void(0);" onclick="friendsClose()">Close</a>
         <div class="list">
             <% a.each do |friend| %>
-                <form class="send" action="/chat" method="GET" autocomplete="off">
-                    <input type="hidden" value="<%=friend[0]%>" name="friend">
-                    <input class="friend" type="submit" value="<%=friend[0]%>">
-                </form>
+                <div class="pair">
+                    <form class="send" action="/chat" method="GET" autocomplete="off">
+                        <input type="hidden" value="<%=friend[0]%>" name="friend">
+                        <input class="group" type="submit" value="<%=friend[0]%>">
+                    </form>
+                    <form class="send" action="/add_to_group" method="POST" autocomplete="off">
+                        <input type="hidden" value="<%=friend[0]%>" name="friend">
+                        <input class="add_to_chat" type="submit" value="+">
+                    </form>
+                </div>
             <% end %>
             <form class="send" action="/website" method="GET" autocomplete="off">
                 <input class="friend margin" type="submit" value="Back">
@@ -22,9 +28,9 @@
         </div>
         <div class="window" id="window">
         </div>
-        <form class="send" action="/message" method="POST" autocomplete="off">
+        <form class="send" action="/group_message" method="POST" autocomplete="off">
             <input class="chat-input" type="text" name="message" placeholder="Type here">
-            <input type="hidden" value="<%=name%>" name="friend">
+            <input type="hidden" value="<%=name%>" name="group">
             <input type="submit" value="Send">
         </form>
     </div>

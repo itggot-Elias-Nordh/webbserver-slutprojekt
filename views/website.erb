@@ -1,6 +1,7 @@
 <div class="notes"></div>
 <div class="container">
     <a class="open" href="javaScript:void(0);" onclick="friendsOpen()">Friends</a> 
+    <a class="group_open" href="javaScript:void(0);" onclick="groupsOpen()">Groups</a> 
     <a class="logout" href="/">Logout</a> 
     <div class="friends">
         <a href="javaScript:void(0);" onclick="friendsClose()">Close</a>
@@ -13,10 +14,27 @@
             <% end %>
         </div>
     </div>
+    <div class="groups">
+        <a href="javaScript:void(0);" onclick="groupsClose()">Close</a>
+        <div class="list">
+            <% groups.each do |group| %>
+                <form class="send" action="/group_chat" method="GET" autocomplete="off">
+                    <input type="hidden" value="<%=group[0]%>" name="group">
+                    <input class="friend" type="submit" value="<%=(group[0].chars.slice(0..-8)).join%>">
+                </form>
+            <% end %>
+        </div>
+    </div>
     <div class="add">
         <form action="/add" method="POST" autocomplete="off">
             <input type="text" name="name">
             <input type="submit" value="Add Friend">
+        </form>
+    </div>
+    <div class="create_group">
+        <form action="/create_group" method="POST" autocomplete="off">
+            <input type="text" name="name">
+            <input type="submit" value="Create Group">
         </form>
     </div>
 </div>
