@@ -1,7 +1,12 @@
 require_relative 'modules.rb'
 
 class App < Sinatra::Base
+	include Account
+	include Social
+	include Add
 	include Messages
+	include Group
+
 	enable:sessions
 
 	get('/error') do
@@ -31,9 +36,8 @@ class App < Sinatra::Base
 		re_password = params[:re_password]
 		if password == re_password
 			password_digest = BCrypt::Password.create(password)
-			db = SQLite3::Database.new("./db/copybook.sqlite")
 			begin
-				db.execute("INSERT INTO login (username, password) VALUES (?,?)", [username, password_digest])
+				Account::register(username, password_digest)
 			rescue
 				session[:error] = "Username has already been used"
 				session[:back] = "/register"
@@ -42,6 +46,7 @@ class App < Sinatra::Base
 			redirect('/')
 		else
 			session[:error] = "Passwords not the same"
+			session[:back] = "/register"
 			redirect('/error')
 		end
 	end
@@ -57,9 +62,8 @@ class App < Sinatra::Base
 		if username == "" or password == ""
 			redirect('/website')
 		end
-		db = SQLite3::Database.new("./db/copybook.sqlite")
 		begin 
-			a = db.execute("SELECT * FROM login WHERE username IS (?)", [username])[0]
+			a = Account::login(username)
 			password_digest = BCrypt::Password.new(a[2])
 		rescue
 			redirect('/website')
@@ -77,9 +81,9 @@ class App < Sinatra::Base
 		user1 = session[:username]
 		session[:user2] = ""
 		if session[:user] == true
-			db = SQLite3::Database.new("./db/copybook.sqlite")
-			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
-			groups = db.execute("SELECT group_name FROM groups WHERE user_name IS (?)", [user1])
+			result = Social::friends_groups(user1)
+			friends = result[0]
+			groups = result[1]
 			erb(:website, locals:{a: friends, groups: groups})
 		else
 			session[:error] = "Wrong username or password"
@@ -100,13 +104,13 @@ class App < Sinatra::Base
 			session[:back] = "/website"
 			redirect('/error')
 		end
-		db = SQLite3::Database.new("./db/copybook.sqlite")
-		if db.execute("SELECT * FROM login WHERE username IS (?)", [user2]) == []
+		temp = Social::user2(user2)
+		if temp == []
 			session[:error] = "User does not exist"
 			session[:back] = "/website"
 			redirect('/error')
 		end
-		friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
+		friends = Social::friends(user1)
 		friends.each do |friend|
 			if friend[0] == user2
 				session[:error] = "Already friends"
@@ -114,8 +118,7 @@ class App < Sinatra::Base
 				redirect('/error')
 			end
 		end
-		db.execute("INSERT INTO friends (user1, user2) VALUES (?,?)", [user1, user2])
-		db.execute("INSERT INTO friends (user2, user1) VALUES (?,?)", [user1, user2])
+		Add::both(user1, user2)
 		redirect('/website')
 	end
 
@@ -127,8 +130,7 @@ class App < Sinatra::Base
 		if message == ""
 			redirect('/chat')
 		end
-		db = SQLite3::Database.new("./db/copybook.sqlite")
-		db.execute("INSERT INTO messages (message, user1, user2) VALUES (?,?,?)", [message, user1, user2])
+		Messages::send(message, user1, user2)
 		redirect('/chat')
 	end
 
@@ -141,8 +143,7 @@ class App < Sinatra::Base
 		if message == ""
 			redirect('/group_chat')
 		end
-		db = SQLite3::Database.new("./db/copybook.sqlite")
-		db.execute("INSERT INTO messages (message, user1, user2) VALUES (?,?,?)", [message, user1, group])
+		Messages::send(message, user1, group)
 		redirect('/group_chat')
 	end
 
@@ -153,8 +154,7 @@ class App < Sinatra::Base
 			if user2 == "" or user2 == nil
 				user2 = session[:user2]
 			end
-			db = SQLite3::Database.new("./db/copybook.sqlite")
-			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
+			friends = Social::friends(user1)
 			session[:user2] = user2
 			erb(:chat, locals:{a: friends, name: user2})
 		else
@@ -172,10 +172,8 @@ class App < Sinatra::Base
 			if group == "" or group == nil
 				group = session[:group]
 			end
-			db = SQLite3::Database.new("./db/copybook.sqlite")
-			friends = db.execute("SELECT user2 FROM friends WHERE user1 IS (?)", [user1])
+			friends = Social::friends(user1)
 			session[:group] = group
-			p group
 			erb(:group_chat, locals:{a: friends, name: group})
 		else
 			session[:error] = "Not logged in"
@@ -192,12 +190,11 @@ class App < Sinatra::Base
 			user2 = session[:group]
 			yes = true
 		end
-		db = SQLite3::Database.new("./db/copybook.sqlite")
-		user1_messages = db.execute("SELECT id, message FROM messages WHERE user1=? AND user2=?", [user1, user2])
+		user1_messages = Messages::user1(user1, user2)
 		if yes == true
-			user2_messages = db.execute("SELECT * FROM messages WHERE user2=? AND user1!=?", [user2, user1])
+			user2_messages = Messages::user2_1(user1, user2)
 		else
-			user2_messages = db.execute("SELECT * FROM messages WHERE user1=? AND user2=?", [user2, user1])
+			user2_messages = Messages::user2_2(user1, user2)
 		end
 		result = Messages::escape_messages(user1_messages, user2_messages)
 		user1_messages = result[0]
@@ -208,17 +205,11 @@ class App < Sinatra::Base
 	post('/create_group') do
 		user = session[:username]
 		group = params[:name] + " (group)"
-		db = SQLite3::Database.new("./db/copybook.sqlite")
-		begin
-			if group == db.execute("SELECT * FROM groups WHERE group_name IS (?)", [group])[0][0]
-				session[:error] = "Group already exist"
-				session[:back] = "/website"
-				redirect('/error')
-			else
-				db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, user])
-			end
-		rescue
-			db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, user])
+		error = Group::create(user, group)
+		if error == true
+			session[:error] = "Group already exist"
+			session[:back] = "/website"
+			redirect('/error')
 		end
 		redirect('/website')
 	end
@@ -226,17 +217,11 @@ class App < Sinatra::Base
 	post('/add_to_group') do
 		friend = params[:friend]
 		group = session[:group]
-		db = SQLite3::Database.new("./db/copybook.sqlite")
-		begin
-			if friend != db.execute("SELECT user_name FROM groups WHERE group_name=? AND user_name=?", [group, friend])[0][0]
-				db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, friend])
-			else
-				session[:error] = "User already in the group"
-				session[:back] = "/group_chat"
-				redirect('/error')
-			end
-		rescue
-			db.execute("INSERT INTO groups (group_name, user_name) VALUES (?,?)", [group, friend])
+		error = Group::add(friend, group)
+		if error == true
+			session[:error] = "User already in the group"
+			session[:back] = "/group_chat"
+			redirect('/error')
 		end
 		redirect('/group_chat')
 	end       
